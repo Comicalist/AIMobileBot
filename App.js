@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { OPENAI_API_KEY } from '@env';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
   const [messages, setMessages] = useState([
@@ -23,6 +24,20 @@ export default function App() {
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('');
   const flatListRef = useRef(null);
+
+  useEffect(() => {
+    const loadLanguageSetting = async () => {
+      try {
+        const savedLang = await AsyncStorage.getItem('preferredLanguage');
+        if (savedLang) {
+          setSelectedLanguage(savedLang);
+        }
+      } catch (e) {
+        console.error('Failed to load language', e);
+      }
+    };
+    loadLanguageSetting();
+  }, []);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -77,9 +92,14 @@ export default function App() {
     </View>
   );
 
-  const handleLanguageSelect = (language) => {
-    setSelectedLanguage(language);
-    setIsSettingsVisible(false);
+  const handleLanguageSelect = async (language) => {
+    try {
+      await AsyncStorage.setItem('preferredLanguage', language);
+      setSelectedLanguage(language);
+      setIsSettingsVisible(false);
+    } catch (e) {
+      console.error('Failed to save language', e);
+    }
   };
 
   const toggleSettings = () => {
@@ -138,6 +158,14 @@ export default function App() {
               <Button title="Respond in Finnish" onPress={() => handleLanguageSelect('Finnish')} />
               <Button title="Respond in Swedish" onPress={() => handleLanguageSelect('Swedish')} />
               <Button title="Respond like a drunken pirate" onPress={() => handleLanguageSelect('Drunken Pirate')} />
+              <Button
+                title="Clear Language Preference"
+                onPress={async () => {
+                  await AsyncStorage.removeItem('preferredLanguage');
+                  setSelectedLanguage('');
+                  setIsSettingsVisible(false);
+                }}
+              />
               <Button title="Close" onPress={() => setIsSettingsVisible(false)} />
             </View>
           </View>
