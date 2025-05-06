@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-  StatusBar,
+  Modal,
+  Button,
 } from 'react-native';
 import { OPENAI_API_KEY } from '@env';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,11 +20,22 @@ export default function App() {
     { id: '1', sender: 'bot', text: 'Hi! Ask me anything.' },
   ]);
   const [input, setInput] = useState('');
+  const [isSettingsVisible, setIsSettingsVisible] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('');
   const flatListRef = useRef(null);
-
 
   const sendMessage = async () => {
     if (!input.trim()) return;
+
+    let messageWithLanguage = input;
+
+    if (selectedLanguage === 'Drunken Pirate') {
+      messageWithLanguage += ' Respond like a drunken pirate, ye scurvy dog!';
+    } else if (selectedLanguage) {
+      messageWithLanguage += ` Respond to this in ${selectedLanguage}`;
+    }
+
+    console.log("User Message Sent: ", messageWithLanguage);
 
     const userMessage = { id: Date.now().toString(), sender: 'user', text: input };
     setMessages(prev => [...prev, userMessage]);
@@ -38,7 +50,7 @@ export default function App() {
         },
         body: JSON.stringify({
           model: 'gpt-3.5-turbo',
-          messages: [{ role: 'user', content: input }],
+          messages: [{ role: 'user', content: messageWithLanguage }],
         }),
       });
 
@@ -59,12 +71,20 @@ export default function App() {
     }
   };
 
-
   const renderItem = ({ item }) => (
     <View style={[styles.message, item.sender === 'user' ? styles.user : styles.bot]}>
       <Text style={styles.messageText}>{item.text}</Text>
     </View>
   );
+
+  const handleLanguageSelect = (language) => {
+    setSelectedLanguage(language);
+    setIsSettingsVisible(false);
+  };
+
+  const toggleSettings = () => {
+    setIsSettingsVisible(prev => !prev);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -73,13 +93,15 @@ export default function App() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 80}
       >
-      <View style={[styles.header, { paddingTop: 20 }]}>
-        <Text style={styles.headerTitle}>MobileAI</Text>
-        <TouchableOpacity onPress={() => console.log('Settings pressed')}>
-          <Ionicons name="settings-outline" size={28} color="black" />
-        </TouchableOpacity>
-      </View>
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: 20 }]}>
+          <Text style={styles.headerTitle}>MobileAI</Text>
+          <TouchableOpacity onPress={toggleSettings}>
+            <Ionicons name="settings-outline" size={28} color="black" />
+          </TouchableOpacity>
+        </View>
 
+        {/* Chat messages */}
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -89,7 +111,8 @@ export default function App() {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
-  
+
+        {/* Input field and Send button */}
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -101,6 +124,24 @@ export default function App() {
             <Text style={styles.sendText}>Send</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Settings Modal */}
+        <Modal
+          visible={isSettingsVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsSettingsVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Choose a language/style</Text>
+              <Button title="Respond in Finnish" onPress={() => handleLanguageSelect('Finnish')} />
+              <Button title="Respond in Swedish" onPress={() => handleLanguageSelect('Swedish')} />
+              <Button title="Respond like a drunken pirate" onPress={() => handleLanguageSelect('Drunken Pirate')} />
+              <Button title="Close" onPress={() => setIsSettingsVisible(false)} />
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -108,9 +149,9 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  chat: { 
+  chat: {
     paddingTop: 10,
-    paddingHorizontal: 10, 
+    paddingHorizontal: 10,
   },
   message: {
     marginVertical: 5,
@@ -171,9 +212,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flex: 1,
   },
-  headerSpacer: {
-    width: 28,
+  settingsButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
   },
-
-
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 40,
+    borderRadius: 10,
+    width: 300,
+  },
+  modalTitle: {
+    fontSize: 18,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
 });
