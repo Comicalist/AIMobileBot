@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,16 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { OPENAI_API_KEY } from '@env';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function App() {
   const [messages, setMessages] = useState([
     { id: '1', sender: 'bot', text: 'Hi! Ask me anything.' },
   ]);
   const [input, setInput] = useState('');
+  const flatListRef = useRef(null);
+
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -26,11 +30,10 @@ export default function App() {
     setInput('');
 
     try {
-      const apiKey = 'key-works,just-dont-have-money-to-waste-all-the-time,tried-secure-method,kept-breaking-app'; 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -56,6 +59,7 @@ export default function App() {
     }
   };
 
+
   const renderItem = ({ item }) => (
     <View style={[styles.message, item.sender === 'user' ? styles.user : styles.bot]}>
       <Text style={styles.messageText}>{item.text}</Text>
@@ -69,12 +73,21 @@ export default function App() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 80}
       >
+      <View style={[styles.header, { paddingTop: 20 }]}>
+        <Text style={styles.headerTitle}>MobileAI</Text>
+        <TouchableOpacity onPress={() => console.log('Settings pressed')}>
+          <Ionicons name="settings-outline" size={28} color="black" />
+        </TouchableOpacity>
+      </View>
+
         <FlatList
+          ref={flatListRef}
           data={messages}
           keyExtractor={item => item.id}
           renderItem={renderItem}
-          contentContainerStyle={styles.chat}
-          inverted
+          contentContainerStyle={[styles.chat, { paddingTop: 60 }]}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
   
         <View style={styles.inputContainer}>
@@ -142,4 +155,25 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: '#ccc',
+    backgroundColor: '#fff',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    flex: 1,
+  },
+  headerSpacer: {
+    width: 28,
+  },
+
+
 });
