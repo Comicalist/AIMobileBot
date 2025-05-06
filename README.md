@@ -1,4 +1,4 @@
-# MobileAI Chat App
+# MobileAI Chat Bot
 
 A simple mobile chat interface powered by OpenAI's GPT-3.5-turbo model. 
 
