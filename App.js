@@ -26,6 +26,7 @@ export default function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('');
+  const [showLanguageSettings, setShowLanguageSettings] = useState(false);
   const flatListRef = useRef(null);
 
   useEffect(() => {
@@ -76,6 +77,9 @@ export default function App() {
     } else if (selectedLanguage) {
       messageWithLanguage += ` Respond to this in ${selectedLanguage}`;
     }
+
+    console.log('Original input:', input);
+    console.log('Outgoing message: ', messageWithLanguage);
 
     const userMessage = { id: Date.now().toString(), sender: 'user', text: input };
     setMessages(prev => [...prev, userMessage]);
@@ -223,44 +227,56 @@ export default function App() {
           visible={isSettingsVisible}
           animationType="slide"
           transparent={true}
-          onRequestClose={() => setIsSettingsVisible(false)}
+          onRequestClose={() => {
+            setIsSettingsVisible(false);
+            setShowLanguageSettings(false);
+          }}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Choose a language/style</Text>
-              <Button title="Respond in Finnish" onPress={() => handleLanguageSelect('Finnish')} />
-              <Button title="Respond in Swedish" onPress={() => handleLanguageSelect('Swedish')} />
-              <Button title="Respond like a drunken pirate" onPress={() => handleLanguageSelect('Drunken Pirate')} />
-              <Button
-                title="Clear Language Preference"
-                onPress={async () => {
-                  await AsyncStorage.removeItem('preferredLanguage');
-                  setSelectedLanguage('');
-                  setIsSettingsVisible(false);
-                }}
-              />
-
-              <Text style={{ fontWeight: 'bold', marginTop: 20 }}>Past conversations:</Text>
-              <FlatList
-                data={conversations}
-                keyExtractor={item => item.id}
-                renderItem={({ item }) => (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <TouchableOpacity onPress={() => loadConversation(item.id)} style={{ flex: 1 }}>
-                      <Text style={{ paddingVertical: 6 }}>{item.title}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => deleteConversation(item.id)}>
-                      <Ionicons name="trash" size={20} color="red" />
-                    </TouchableOpacity>
-                  </View>
-                )}
-              />
-
-
-              <Button title="Close" onPress={() => setIsSettingsVisible(false)} />
+              {showLanguageSettings ? (
+                <>
+                  <Text style={styles.modalTitle}>Language Settings</Text>
+                  <Button title="Respond in Finnish" onPress={() => handleLanguageSelect('Finnish')} />
+                  <Button title="Respond in Swedish" onPress={() => handleLanguageSelect('Swedish')} />
+                  <Button title="Respond like a drunken pirate" onPress={() => handleLanguageSelect('Drunken Pirate')} />
+                  <Button
+                    title="Clear Language Preference"
+                    onPress={async () => {
+                      await AsyncStorage.removeItem('preferredLanguage');
+                      setSelectedLanguage('');
+                      setIsSettingsVisible(false);
+                      setShowLanguageSettings(false);
+                    }}
+                  />
+                  <Button title="Back" onPress={() => setShowLanguageSettings(false)} />
+                </>
+              ) : (
+                <>
+                  <Text style={styles.modalTitle}>Settings</Text>
+                  <Button title="Language Settings" onPress={() => setShowLanguageSettings(true)} />
+                  <Text style={{ fontWeight: 'bold', marginTop: 20 }}>Past conversations:</Text>
+                  <FlatList
+                    data={conversations}
+                    keyExtractor={item => item.id}
+                    renderItem={({ item }) => (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <TouchableOpacity onPress={() => loadConversation(item.id)} style={{ flex: 1 }}>
+                          <Text style={{ paddingVertical: 6 }}>{item.title}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => deleteConversation(item.id)}>
+                          <Ionicons name="trash" size={20} color="red" />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  />
+                  <Button title="Close" onPress={() => setIsSettingsVisible(false)} />
+                </>
+              )}
             </View>
           </View>
         </Modal>
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
