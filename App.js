@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   Modal,
   Button,
+  Alert,
 } from 'react-native';
 import { OPENAI_API_KEY } from '@env';
 import { Ionicons } from '@expo/vector-icons';
@@ -129,6 +130,30 @@ export default function App() {
     }
   };
 
+  const deleteConversation = async (id) => {
+    Alert.alert(
+      "Delete Conversation",
+      "Are you sure you want to delete this conversation?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const filtered = conversations.filter(c => c.id !== id);
+            setConversations(filtered);
+            await AsyncStorage.setItem('conversations', JSON.stringify(filtered));
+
+            if (id === currentConversationId) {
+              setCurrentConversationId(null);
+              setMessages([{ id: '1', sender: 'bot', text: 'Hi! Ask me anything.' }]);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderItem = ({ item }) => (
     <View style={[styles.message, item.sender === 'user' ? styles.user : styles.bot]}>
       <Text style={styles.messageText}>{item.text}</Text>
@@ -220,11 +245,17 @@ export default function App() {
                 data={conversations}
                 keyExtractor={item => item.id}
                 renderItem={({ item }) => (
-                  <TouchableOpacity onPress={() => loadConversation(item.id)}>
-                    <Text style={{ paddingVertical: 6 }}>{item.title}</Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <TouchableOpacity onPress={() => loadConversation(item.id)} style={{ flex: 1 }}>
+                      <Text style={{ paddingVertical: 6 }}>{item.title}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => deleteConversation(item.id)}>
+                      <Ionicons name="trash" size={20} color="red" />
+                    </TouchableOpacity>
+                  </View>
                 )}
               />
+
 
               <Button title="Close" onPress={() => setIsSettingsVisible(false)} />
             </View>
