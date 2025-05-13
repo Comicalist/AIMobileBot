@@ -21,6 +21,8 @@ export default function App() {
     { id: '1', sender: 'bot', text: 'Hi! Ask me anything.' },
   ]);
   const [input, setInput] = useState('');
+  const [conversations, setConversations] = useState([]);
+  const [currentConversationId, setCurrentConversationId] = useState(null);
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('');
   const flatListRef = useRef(null);
@@ -39,6 +41,30 @@ export default function App() {
     loadLanguageSetting();
   }, []);
 
+  useEffect(() => {
+    const loadConversations = async () => {
+      const saved = await AsyncStorage.getItem('conversations');
+      if (saved) {
+        setConversations(JSON.parse(saved));
+      }
+    };
+    loadConversations();
+  }, []);
+
+  const updateConversation = async (updatedMessages) => {
+    const updated = {
+      id: currentConversationId || Date.now().toString(),
+      title: `Conversation ${new Date().toLocaleString()}`,
+      messages: updatedMessages,
+    };
+
+    const filtered = conversations.filter(c => c.id !== updated.id);
+    const newList = [...filtered, updated];
+    setConversations(newList);
+    await AsyncStorage.setItem('conversations', JSON.stringify(newList));
+    setCurrentConversationId(updated.id);
+  };
+
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -49,8 +75,6 @@ export default function App() {
     } else if (selectedLanguage) {
       messageWithLanguage += ` Respond to this in ${selectedLanguage}`;
     }
-
-    console.log("User Message Sent: ", messageWithLanguage);
 
     const userMessage = { id: Date.now().toString(), sender: 'user', text: input };
     setMessages(prev => [...prev, userMessage]);
@@ -70,19 +94,38 @@ export default function App() {
       });
 
       const data = await response.json();
-      console.log(data);
       const botReply = data.choices?.[0]?.message?.content?.trim() || 'Sorry, I didn’t get that.';
 
-      setMessages(prev => [
-        ...prev,
-        { id: Date.now().toString() + '-bot', sender: 'bot', text: botReply },
-      ]);
+      const botMessage = { id: Date.now().toString() + '-bot', sender: 'bot', text: botReply };
+      const updatedMessages = [...messages, userMessage, botMessage];
+      setMessages(updatedMessages);
+      await updateConversation(updatedMessages);
+
     } catch (err) {
       console.error(err);
-      setMessages(prev => [
-        ...prev,
-        { id: Date.now().toString() + '-bot', sender: 'bot', text: 'Oops, something went wrong.' },
-      ]);
+      const errorMessage = {
+        id: Date.now().toString() + '-bot',
+        sender: 'bot',
+        text: 'Oops, something went wrong.',
+      };
+      const updatedMessages = [...messages, userMessage, errorMessage];
+      setMessages(updatedMessages);
+      await updateConversation(updatedMessages);
+    }
+  };
+
+  const startNewConversation = () => {
+    const newId = Date.now().toString();
+    setCurrentConversationId(newId);
+    setMessages([{ id: '1', sender: 'bot', text: 'Hi! Ask me anything.' }]);
+  };
+
+  const loadConversation = (id) => {
+    const convo = conversations.find(c => c.id === id);
+    if (convo) {
+      setCurrentConversationId(convo.id);
+      setMessages(convo.messages);
+      setIsSettingsVisible(false);
     }
   };
 
@@ -116,9 +159,14 @@ export default function App() {
         {/* Header */}
         <View style={[styles.header, { paddingTop: 20 }]}>
           <Text style={styles.headerTitle}>MobileAI</Text>
-          <TouchableOpacity onPress={toggleSettings}>
-            <Ionicons name="settings-outline" size={28} color="black" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row' }}>
+            <TouchableOpacity onPress={startNewConversation} style={{ marginRight: 10 }}>
+              <Ionicons name="add-circle-outline" size={28} color="black" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={toggleSettings}>
+              <Ionicons name="settings-outline" size={28} color="black" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Chat messages */}
@@ -166,6 +214,18 @@ export default function App() {
                   setIsSettingsVisible(false);
                 }}
               />
+
+              <Text style={{ fontWeight: 'bold', marginTop: 20 }}>Past conversations:</Text>
+              <FlatList
+                data={conversations}
+                keyExtractor={item => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity onPress={() => loadConversation(item.id)}>
+                    <Text style={{ paddingVertical: 6 }}>{item.title}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+
               <Button title="Close" onPress={() => setIsSettingsVisible(false)} />
             </View>
           </View>
@@ -177,89 +237,68 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  chat: {
-    paddingTop: 10,
-    paddingHorizontal: 10,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    backgroundColor: '#f0f0f0',
+    paddingBottom: 10,
   },
+  headerTitle: { fontSize: 20, fontWeight: 'bold' },
+  chat: { padding: 16 },
   message: {
-    marginVertical: 5,
-    padding: 10,
-    borderRadius: 10,
+    marginVertical: 6,
+    padding: 12,
+    borderRadius: 12,
     maxWidth: '80%',
   },
   user: {
-    alignSelf: 'flex-end',
     backgroundColor: '#DCF8C6',
+    alignSelf: 'flex-end',
   },
   bot: {
-    alignSelf: 'flex-start',
     backgroundColor: '#E2E2E2',
+    alignSelf: 'flex-start',
   },
-  messageText: {
-    fontSize: 16,
-  },
+  messageText: { fontSize: 16 },
   inputContainer: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderColor: '#ccc',
     padding: 8,
+    borderTopWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
   },
   input: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#f2f2f2',
     borderRadius: 20,
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 16,
   },
   sendButton: {
-    marginLeft: 8,
     backgroundColor: '#007AFF',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
     borderRadius: 20,
-    justifyContent: 'center',
-  },
-  sendText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderColor: '#ccc',
-    backgroundColor: '#fff',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    flex: 1,
-  },
-  settingsButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-  },
+  sendText: { color: '#fff', fontWeight: 'bold' },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 20,
   },
   modalContent: {
     backgroundColor: 'white',
-    padding: 40,
     borderRadius: 10,
-    width: 300,
+    padding: 20,
   },
   modalTitle: {
     fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 10,
-    textAlign: 'center',
   },
 });
